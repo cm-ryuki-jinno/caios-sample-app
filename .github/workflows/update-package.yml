@@ -1,0 +1,96 @@
+name: CAIOS Package Update
+
+on:
+  workflow_dispatch:
+    inputs:
+      package:
+        description: 'Package name to update (e.g., zod, date-fns)'
+        required: true
+        type: string
+      from_version:
+        description: 'Current version (e.g., 3.21.0)'
+        required: true
+        type: string
+      to_version:
+        description: 'Target version (e.g., 3.23.0)'
+        required: true
+        type: string
+
+jobs:
+  update-and-test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js 18
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install current dependencies
+        run: npm ci
+
+      - name: Update package version
+        run: |
+          echo "Updating ${{ inputs.package }} from ${{ inputs.from_version }} to ${{ inputs.to_version }}"
+          npm install ${{ inputs.package }}@${{ inputs.to_version }}
+
+      - name: Commit version update
+        run: |
+          git config user.email "caios-bot@github.com"
+          git config user.name "CAIOS Bot"
+          git add package.json package-lock.json
+          git commit -m "chore: update ${{ inputs.package }} from ${{ inputs.from_version }} to ${{ inputs.to_version }}"
+          git push origin main
+
+      - name: Run unit tests
+        id: unit_tests
+        run: npm run test:unit
+        continue-on-error: true
+
+      - name: Install Playwright browsers
+        if: steps.unit_tests.outcome == 'success'
+        run: npx playwright install chromium --with-deps
+
+      - name: Build app for E2E
+        if: steps.unit_tests.outcome == 'success'
+        run: npm run build
+
+      - name: Run E2E tests
+        id: e2e_tests
+        if: steps.unit_tests.outcome == 'success'
+        run: npx playwright test --reporter=list
+        env:
+          CI: true
+        continue-on-error: true
+
+      - name: Rollback if tests failed
+        if: steps.unit_tests.outcome == 'failure' || steps.e2e_tests.outcome == 'failure'
+        run: |
+          echo "Tests failed. Starting rollback..."
+          git revert HEAD --no-edit
+          git push origin main
+          echo "Rollback completed."
+
+      - name: Save result
+        run: |
+          if [ "${{ steps.unit_tests.outcome }}" == "success" ] && [ "${{ steps.e2e_tests.outcome }}" != "failure" ]; then
+            echo "SUCCESS" > result.txt
+            echo "All tests passed successfully."
+          else
+            echo "ROLLED_BACK" > result.txt
+            echo "Tests failed. Package has been rolled back."
+          fi
+
+      - name: Upload result artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: update-result
+          path: result.txt
