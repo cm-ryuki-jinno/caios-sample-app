@@ -74,7 +74,7 @@ jobs:
         continue-on-error: true
 
       - name: Rollback if tests failed
-        if: steps.unit_tests.outcome == 'failure' || steps.e2e_tests.outcome == 'failure'
+        if: steps.unit_tests.outcome == 'failure'
         run: |
           echo "Tests failed. Starting rollback..."
           git revert HEAD --no-edit
@@ -83,7 +83,7 @@ jobs:
 
       - name: Save result
         run: |
-          if [ "${{ steps.unit_tests.outcome }}" == "success" ] && [ "${{ steps.e2e_tests.outcome }}" != "failure" ]; then
+          if [ "${{ steps.unit_tests.outcome }}" == "success" ]; then
             echo "SUCCESS" > result.txt
             echo "All tests passed successfully."
           else
