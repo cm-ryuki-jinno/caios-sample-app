@@ -9,9 +9,11 @@
  * 🔵 信頼性レベル: date-fns-utils-red-phase.md の「Greenフェーズで実装すべき内容」に直接対応
  */
 
-// 【import定義】: date-fns v2のimportパス（v3ではパス変更により解決不能 → テスト失敗のデモシナリオ）
+// 【import定義】: date-fns v2のサブパスimport（v3で削除されテスト失敗→ロールバック発動のデモシナリオ）
 // 🔵 REQ-010「format/parseISO/isAfter直接使用」、REQ-007「v3でimportパス変更で確実に失敗」に対応
-import { format, parseISO, isAfter } from 'date-fns';
+import format from 'date-fns/format';
+import parseISO from 'date-fns/parseISO';
+import isAfter from 'date-fns/isAfter';
 import { ja } from 'date-fns/locale';
 
 // 【設定定数】: 1日のミリ秒数（24時間 × 60分 × 60秒 × 1000ミリ秒）
