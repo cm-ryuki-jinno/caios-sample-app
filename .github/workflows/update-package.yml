@@ -40,13 +40,15 @@ jobs:
       - name: Update package version
         run: |
           echo "Updating ${{ inputs.package }} from ${{ inputs.from_version }} to ${{ inputs.to_version }}"
-          npm install ${{ inputs.package }}@${{ inputs.to_version }}
+          npm pkg set "dependencies.${{ inputs.package }}=${{ inputs.to_version }}"
+          npm install
 
       - name: Commit version update
         run: |
           git config user.email "caios-bot@github.com"
           git config user.name "CAIOS Bot"
           git add package.json package-lock.json
+          git diff --cached --quiet && echo "No changes to commit" && exit 0
           git commit -m "chore: update ${{ inputs.package }} from ${{ inputs.from_version }} to ${{ inputs.to_version }}"
           git push origin main
 
