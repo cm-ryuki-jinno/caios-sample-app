@@ -62,19 +62,21 @@ jobs:
         run: npx playwright install chromium --with-deps
 
       - name: Build app for E2E
+        id: build
         if: steps.unit_tests.outcome == 'success'
         run: npm run build
+        continue-on-error: true
 
       - name: Run E2E tests
         id: e2e_tests
-        if: steps.unit_tests.outcome == 'success'
+        if: steps.unit_tests.outcome == 'success' && steps.build.outcome == 'success'
         run: npx playwright test --reporter=list
         env:
           CI: true
         continue-on-error: true
 
       - name: Rollback if tests failed
-        if: steps.unit_tests.outcome == 'failure'
+        if: steps.unit_tests.outcome == 'failure' || steps.build.outcome == 'failure'
         run: |
           echo "Tests failed. Starting rollback..."
           git revert HEAD --no-edit
@@ -83,7 +85,7 @@ jobs:
 
       - name: Save result
         run: |
-          if [ "${{ steps.unit_tests.outcome }}" == "success" ]; then
+          if [ "${{ steps.unit_tests.outcome }}" == "success" ] && [ "${{ steps.build.outcome }}" != "failure" ]; then
             echo "SUCCESS" > result.txt
             echo "All tests passed successfully."
           else
